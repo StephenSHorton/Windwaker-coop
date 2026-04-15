@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -10,183 +10,131 @@ namespace Windwaker_coop
     {
         public static bool programSyncing = false;
 
-        private static User currUser;
+        internal static User currUser;
 
-        private static IGame[] games;
+        internal static IGame[] games;
         public static IGame currGame;
         public static Config config;
         public static SyncSettings syncSettings;
 
-        static void Main(string[] args)
+        /// <summary>
+        /// Loads config and games. Called once at app startup.
+        /// </summary>
+        public static bool Initialize()
         {
-            Console.Title = "The Legend of Zelda Coop Server/Client";
-            Output.text("-The Legend of Zelda Coop-\n", ConsoleColor.Green);
-
-            //Process config file
             config = readConfigFile();
             if (!config.isValidConfig())
             {
                 Output.error("Invalid configuration file - Fix the errors or delete the config.json file");
-                EndProgram();
+                return false;
             }
 
-            //Load games
             games = loadGames();
-            if (config.gameId >= games.Length)
+            return true;
+        }
+
+        /// <summary>
+        /// Sets the current game by id.
+        /// </summary>
+        public static bool SelectGame(int gameId)
+        {
+            if (games == null || gameId < 0 || gameId >= games.Length)
             {
                 Output.error("Invalid game id");
-                EndProgram();
+                return false;
             }
-            currGame = games[config.gameId];
-
-            //Run in memory watcher mode
-            if (config.runInWatcherMode)
-            {
-                Console.Title = $"{currGame.gameName} Memory Watcher";
-                Output.text("Beginning in memory watcher mode!");
-                programSyncing = true;
-                Watcher watcher = new Watcher();
-                watcher.beginWatching(config.syncDelay);
-
-                string input = "";
-                while (input != "stop")
-                    input = Console.ReadLine().ToLower();
-                EndProgram();
-            }
-
-            //Gets the type - server or client
-            string type = askQuestion("Is this instance a server or a client? (s/c): ").ToLower();
-
-            if (type == "s" || type == "server")
-            {
-                Console.Title = $"{currGame.gameName} Coop Server";
-
-                //gets the ip address
-                string ip = askForIp("\nEnter ip address of this machine: ");
-
-                //Reset console
-                Output.clear();
-                Output.text($"-{currGame.gameName} Coop-\n", ConsoleColor.Green);
-
-                //Creates new server object
-                currUser = new Server(ip);
-            }
-            else if (type == "c" || type == "client")
-            {
-                Console.Title = $"{currGame.gameName} Coop Client";
-
-                //gets the ip address
-                string ip = askForIp("\nEnter ip address of the server: ");
-
-                //gets the player name
-                string playerName = askQuestion("\nEnter player name: ");
-                if (playerName.Length < 1 || playerName.Length > 20 || playerName.Contains('~') || playerName.Contains(' '))
-                {
-                    Output.error("That player name is invalid - Must be between 1 and 20 characters and can not contain spaces or '~'");
-                    EndProgram();
-                }
-
-                //Reset console
-                Output.clear();
-                Output.text($"-{currGame.gameName} Coop-\n", ConsoleColor.Green);
-
-                //Creates new client object
-                currUser = new Client(ip, playerName);
-            }
-            else
-            {
-                Output.error("The given input was neither 's' nor 'c'");
-                EndProgram();
-            }
-
-            //Server/Client has begun operation - run the command loop
-            commandLoop();
-            EndProgram();
+            currGame = games[gameId];
+            config.gameId = gameId;
+            return true;
         }
 
-        //Called in main to ask both server and client for ip
-        private static string askForIp(string message)
+        /// <summary>
+        /// Creates a Server instance at the given IP.
+        /// </summary>
+        public static void StartAsServer(string ip)
         {
-            //Find ipv4 addresses of machine
-            string strHostName = Dns.GetHostName();
-            Output.debug("Local Machine's Host Name: " + strHostName, 2);
-            IPAddress[] addr = Dns.GetHostEntry(strHostName).AddressList;
-            List<string> possibleIps = new List<string>();
-            foreach (IPAddress ipAd in addr)
-            {
-                Output.debug(ipAd.ToString(), 2);
-                if (ipAd.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-                {
-                    possibleIps.Add(ipAd.ToString());
-                }
-            }
-
-            //Display potential ips
-            if (possibleIps.Count > 0)
-            {
-                Output.text("\nUse IP address of this machine? (Enter id to select it)");
-                for (int i = 0; i < possibleIps.Count; i++)
-                    Output.text($"[{i}]: {possibleIps[i]}");
-            }
-            //Ask for ip address
-            string ip = askQuestion(message);
-            if (ip == "")
-            {
-                Output.error("You need to enter an ip address");
-                EndProgram();
-            }
-            //Check if it is one of the provided potential ones
-            byte ipId;
-            if (byte.TryParse(ip, out ipId) && ipId < possibleIps.Count)
-                return possibleIps[ipId];
-            return ip;
+            currUser = new Server(ip);
         }
 
-        static void commandLoop()
+        /// <summary>
+        /// Creates a Client instance connecting to the given IP.
+        /// </summary>
+        public static void StartAsClient(string ip, string playerName)
         {
-            string command = "";
-            while (command != "stop")
-            {
-                //Read command from user input and make sure it is valid
-                command = Console.ReadLine().Trim();
-                string[] words = command.Split(' ');
-                if (words.Length < 1)
-                {
-                    Output.text("Enter a command.", ConsoleColor.Yellow);
-                    continue;
-                }
-
-                //Seperate it into command and arguments
-                string debugOuput = $"Processing command: '{words[0]}'";
-                string[] args = new string[words.Length - 1];
-                for (int i = 1; i < words.Length; i++)
-                {
-                    args[i - 1] = words[i];
-                    debugOuput += " '" + words[i] + "'";
-                }
-                command = words[0];
-                Output.debug(debugOuput, 1);
-
-                //If the command is valid, send to user for processing and use it
-                string response = currUser.processCommand(command, args);
-                if (response != "")
-                    Output.text(response, ConsoleColor.Yellow);
-            }
+            currUser = new Client(ip, playerName);
         }
 
-        //Ends the program
+        /// <summary>
+        /// Processes a command string and returns the response.
+        /// </summary>
+        public static string ProcessCommand(string input)
+        {
+            if (currUser == null)
+                return "Not connected.";
+
+            string command = input.Trim();
+            string[] words = command.Split(' ');
+            if (words.Length < 1 || string.IsNullOrEmpty(words[0]))
+                return "Enter a command.";
+
+            string[] args = new string[words.Length - 1];
+            string debugOutput = $"Processing command: '{words[0]}'";
+            for (int i = 1; i < words.Length; i++)
+            {
+                args[i - 1] = words[i];
+                debugOutput += " '" + words[i] + "'";
+            }
+            Output.debug(debugOutput, 1);
+
+            if (words[0] == "stop")
+            {
+                Shutdown();
+                return "Stopping...";
+            }
+
+            return currUser.processCommand(words[0], args);
+        }
+
+        /// <summary>
+        /// Gracefully shuts down syncing and disconnects.
+        /// </summary>
+        public static void Shutdown()
+        {
+            programSyncing = false;
+            try { currUser?.End(); } catch { }
+        }
+
+        /// <summary>
+        /// Fatal error handler - called by networking code on unrecoverable errors.
+        /// </summary>
         public static void EndProgram()
         {
-            Output.text("\nApplcation terminated.  Press any key to exit...", ConsoleColor.Gray);
+            Output.text("\nApplication terminated.", ConsoleColor.Gray);
             programSyncing = false;
-            Console.ReadKey();
+            try { currUser?.End(); } catch { }
             Environment.Exit(0);
         }
 
-        static string askQuestion(string question)
+        /// <summary>
+        /// Returns list of local IPv4 addresses for display in the UI.
+        /// </summary>
+        public static List<string> GetLocalIpAddresses()
         {
-            Output.text(question, ConsoleColor.White, false);
-            return Console.ReadLine().Trim();
+            List<string> possibleIps = new List<string>();
+            try
+            {
+                string strHostName = Dns.GetHostName();
+                Output.debug("Local Machine's Host Name: " + strHostName, 2);
+                IPAddress[] addr = Dns.GetHostEntry(strHostName).AddressList;
+                foreach (IPAddress ipAd in addr)
+                {
+                    Output.debug(ipAd.ToString(), 2);
+                    if (ipAd.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                        possibleIps.Add(ipAd.ToString());
+                }
+            }
+            catch { }
+            return possibleIps;
         }
 
         //~Reads from config.json and returns the config object
@@ -226,23 +174,6 @@ namespace Windwaker_coop
             }
             return s;
         }
-
-        /*public static T readFile<T>(string fileName) where T : IDefaultable
-        {
-            string path = Environment.CurrentDirectory + "/" + fileName;
-            T obj;
-
-            if (File.Exists(path))
-            {
-                string str = File.ReadAllText(path);
-                obj = JsonConvert.DeserializeObject<T>(str);
-            }
-            else
-            {
-                obj = default(T);
-            }
-            return obj;
-        }*/
 
         public static string toJson<T>(T obj)
         {

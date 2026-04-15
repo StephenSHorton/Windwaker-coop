@@ -1,18 +1,30 @@
-﻿using System;
+using System;
+using System.Windows.Media;
+using Windwaker_coop.Services;
 
 namespace Windwaker_coop
 {
     static class Output
     {
-        private static void setColor(ConsoleColor color)
+        private static Color MapColor(ConsoleColor color)
         {
-            Console.ForegroundColor = color;
+            return color switch
+            {
+                ConsoleColor.Red => Colors.Red,
+                ConsoleColor.Green => Colors.LimeGreen,
+                ConsoleColor.Blue => Colors.DodgerBlue,
+                ConsoleColor.Yellow => Colors.Gold,
+                ConsoleColor.Gray => Colors.Gray,
+                ConsoleColor.Magenta => Colors.Magenta,
+                ConsoleColor.DarkMagenta => Colors.DarkMagenta,
+                ConsoleColor.Cyan => Colors.Cyan,
+                _ => Colors.White,
+            };
         }
 
         public static void error(string message)
         {
-            setColor(ConsoleColor.Red);
-            Console.WriteLine("Error: " + message);
+            LogService.Instance.AddLog("Error: " + message, Colors.Red);
         }
 
         //Level 1 - decent stuff to know, level 2 - deep stuff
@@ -21,30 +33,25 @@ namespace Windwaker_coop
             if (level <= Program.config.debugLevel)
             {
                 if (level == 1)
-                    setColor(ConsoleColor.Magenta);
+                    LogService.Instance.AddLog(message, Colors.Magenta);
                 else if (level == 2)
-                    setColor(ConsoleColor.DarkMagenta);
+                    LogService.Instance.AddLog(message, Colors.DarkMagenta);
                 else
                 {
                     error("Invalid debug level");
                     return;
                 }
-                Console.WriteLine(message);
             }
         }
 
         public static void text(string message, ConsoleColor color = ConsoleColor.White, bool newLine = true)
         {
-            setColor(color);
-            if (newLine)
-                Console.WriteLine(message);
-            else
-                Console.Write(message);
+            LogService.Instance.AddLog(message, MapColor(color));
         }
 
         public static void clear()
         {
-            Console.Clear();
+            LogService.Instance.Clear();
         }
     }
 }
