@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SimpleTcp;
+using SuperSimpleTcp;
 
 namespace Windwaker_coop
 {
@@ -426,7 +426,7 @@ namespace Windwaker_coop
         }
         #endregion
 
-        private void Events_ClientDisconnected(object sender, ClientDisconnectedEventArgs e)
+        private void Events_ClientDisconnected(object sender, ConnectionEventArgs e)
         {
             Output.text("Client disconnected at " + e.IpPort);
             currIp = e.IpPort;
@@ -436,7 +436,7 @@ namespace Windwaker_coop
             clientIps.Remove(e.IpPort);
         }
 
-        private void Events_ClientConnected(object sender, ClientConnectedEventArgs e)
+        private void Events_ClientConnected(object sender, ConnectionEventArgs e)
         {
             Output.text("Client connected at " + e.IpPort);
             clientIps.Add(e.IpPort, "unknown");

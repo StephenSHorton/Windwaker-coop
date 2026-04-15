@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SimpleTcp;
+using SuperSimpleTcp;
 
 namespace Windwaker_coop
 {
@@ -40,19 +40,20 @@ namespace Windwaker_coop
         //Each data message should be in the form [ length1 length2 type data data data ... ]
         protected virtual void Events_DataReceived(object sender, DataReceivedEventArgs e)
         {
-            Output.debug("Bytes received: " + e.Data.Length, 1);
+            byte[] data = e.Data.ToArray();
+            Output.debug("Bytes received: " + data.Length, 1);
 
             int startIdx = 0;
-            while (startIdx < e.Data.Length - 3)
+            while (startIdx < data.Length - 3)
             {
-                ushort length = BitConverter.ToUInt16(e.Data, startIdx);
-                byte type = e.Data[startIdx + 2];
-                byte[] messageData = e.Data[(startIdx + 3)..(startIdx + 3 + length)];
+                ushort length = BitConverter.ToUInt16(data, startIdx);
+                byte type = data[startIdx + 2];
+                byte[] messageData = data[(startIdx + 3)..(startIdx + 3 + length)];
 
                 processDataReceived(type, messageData);
                 startIdx += 3 + length;
             }
-            if (startIdx != e.Data.Length)
+            if (startIdx != data.Length)
                 Output.error("Received data was formatted incorrectly");
         }
 

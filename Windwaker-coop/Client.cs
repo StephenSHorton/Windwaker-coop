@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SimpleTcp;
+using SuperSimpleTcp;
 using System.Threading.Tasks;
 
 namespace Windwaker_coop
@@ -324,13 +324,13 @@ namespace Windwaker_coop
         }
         #endregion
 
-        private void Events_Disconnected(object sender, ClientDisconnectedEventArgs e)
+        private void Events_Disconnected(object sender, ConnectionEventArgs e)
         {
             Output.text("Disconnected from the server at " + e.IpPort);
             Program.EndProgram();
         }
 
-        private void Events_Connected(object sender, ClientConnectedEventArgs e)
+        private void Events_Connected(object sender, ConnectionEventArgs e)
         {
             Output.text("Successfully connected to the server at " + e.IpPort);
         }
